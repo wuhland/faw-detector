@@ -22,10 +22,29 @@ from picamera import PiCamera
 from aiy.vision import inference
 from aiy.vision.models import utils
 
+#import libraries for tone generator
+from aiy.toneplayer import TonePlayer 
+
+#import send message from locall python file fona
+from ./fona import send_message
+
+class Player(Service):
+    """Controls buzzer."""
+
+  def __init__(self, gpio, bpm):
+    super().__init__()
+    self._toneplayer = TonePlayer(gpio, bpm)
+
+  def process(self, sound):
+    self._toneplayer.play(*sound)
+
+  def play(self, sound):
+    self.submit(sound)
 
 def read_labels(label_path):
   with open(label_path) as label_file:
     return [label.strip() for label in label_file.readlines()]
+
 
 def get_message(processed_result, threshold, top_k):
   if processed_result:
@@ -34,7 +53,6 @@ def get_message(processed_result, threshold, top_k):
     message = 'Nothing detected when threshold=%.2f, top_k=%d' % (
               threshold, top_k)
   return message
-
 
 def process(result, labels, out_tensor_name, threshold, top_k):
   """Processes inference result and returns labels sorted by confidence."""
@@ -49,7 +67,25 @@ def process(result, labels, out_tensor_name, threshold, top_k):
   return [' %s (%.2f)' % (labels[index], prob) for index, prob in pairs]
 
 
+
+def detection_made(processed_result, detection_logger):
+  if processed_result in args.hunting && detection_logger[processed_result] < 3:
+    detection_logger[processed_result] += 1
+  else if detection_logger[processed_result] = 3:
+    detection_logger[processed_result] = 0
+    send_message(processed_result)
+    #make noise
+    player.play('C5q', 'E5q', 'C6q')
+  else:
+    return 
+
+detection_logger = {}
+
 def main():
+#define player for making noises
+  player=Player(gpio=22,bpm=10)
+   
+
   parser = argparse.ArgumentParser()
   parser.add_argument(
       '--model_path',
@@ -93,7 +129,21 @@ def main():
       action='store_true',
       default=False,
       help='Shows end to end FPS.')
+
+  parser.add_argument(
+      '--detecting_list',
+      type=list,
+      default=[],
+      help='Input a list of bugs that you want to keep.'
+  )
+  parser.add_argument{
+    '--message_threshold',type=int,default=3,help='Input detection threshold for sending sms'
+  )
   args = parser.parse_args()
+
+  for item in args.detecting_list:
+    detection_logger[item] = 0 
+  	
 
   model = inference.ModelDescriptor(
       name='mobilenet_based_classifier',
@@ -112,13 +162,18 @@ def main():
           break
         processed_result = process(result, labels, args.output_layer,
                                    args.threshold, args.top_k)
+        #my function to handle sending messages if detection happens at the threshold.
+        detection_made(processed_result)
         cur_time = time.time()
         fps = 1.0 / (cur_time - last_time)
         last_time = cur_time
 
         message = get_message(processed_result, args.threshold, args.top_k)
+		
         if args.show_fps:
           message += '\nWith %.1f FPS.' % fps
+
+
         print(message)
 
         if args.preview:
