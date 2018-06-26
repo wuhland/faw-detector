@@ -71,7 +71,7 @@ def process(result, labels, out_tensor_name, threshold, top_k):
 def detection_made(processed_result, detection_logger):
   if processed_result in args.hunting && detection_logger[processed_result] < 3:
     detection_logger[processed_result] += 1
-  else if detection_logger[processed_result] = 3:
+  else if detection_logger[processed_result] = args.message_threshold:
     detection_logger[processed_result] = 0
     send_message(processed_result)
     #make noise
@@ -142,7 +142,7 @@ def main():
   args = parser.parse_args()
 
   for item in args.detecting_list:
-    detection_logger[item] = 0 
+    detection_logger.item = 0 
   	
 
   model = inference.ModelDescriptor(
